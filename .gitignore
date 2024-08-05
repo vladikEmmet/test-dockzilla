@@ -1,0 +1,8 @@
+# Пример .gitignore файла
+*.log
+*.tmp
+**/node_modules
+**/target
+**/.idea/
+**/.vscode/
+**/.DS_Store
