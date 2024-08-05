@@ -1,3 +1,4 @@
+const API_URL = "http://localhost:4200/api" // Должно быть в .env, оставил для простоты установки
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
@@ -65,7 +66,22 @@ function loadTasks(date) {
 }
 
 function loadAllTasks() {
+    fetch(`${API_URL}/todos`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.json();
+        })
+        .then(data => {
+            return data;
+        });
+}
+
+function renderTasks(tasks) {
 
 }
+
+loadAllTasks();
 
 loadCalendar();
