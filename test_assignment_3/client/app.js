@@ -206,8 +206,31 @@ document.addEventListener('click', (e) => {
        return;
    }
 
-   if(target.dataset.id || target.closest.dataset.id) {
+   if(target?.dataset.id || target?.closest?.dataset?.id) {
+       const modal = document.querySelector('#todo-dialog');
+       const task = todos.find(t => t.id === (target.dataset.id || target.closest.dataset.id));
+       modal.querySelector('.dialog-title').textContent = task.name;
+       modal.querySelector('.dialog-date').textContent = parseTimestamp(task.date);
+       modal.querySelector('.dialog-description').textContent = task.fulldesc;
 
+       const img = document.createElement('img');
+       img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
+       img.alt = task.status ? 'Completed' : 'Not completed';
+
+       img.addEventListener('click', () => {
+          toggleTaskStatus(task.id, !task.status);
+          img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
+       })
+
+       modal.querySelector('.dialog-img').innerHTML = '';
+       modal.querySelector('.dialog-img').appendChild(img);
+
+       modal.showModal();
+   }
+
+   if(target?.dataset?.aim === 'close-modal') {
+         const modal = document.querySelector('#todo-dialog');
+         modal.close();
    }
 });
 

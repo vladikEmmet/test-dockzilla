@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="reset.css">
     <link rel="stylesheet" href="todos.css">
+    <link rel="stylesheet" href="modal.css">
 </head>
 <body>
     <header class="header" id="header">
@@ -64,6 +65,21 @@
         </div>
     </main>
 
-<script src="app.js" defer type="module"></script>
+    <dialog id="todo-dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <div>
+                    <h3 class="dialog-title"></h3>
+                    <p class="dialog-date"></p>
+                </div>
+                <div class="dialog-img"></div>
+            </div>
+            <p class="dialog-description"></p>
+            <button class="close-dialog" data-aim="close-modal">Готово</button>
+        </div>
+    </dialog>
+
+
+    <script src="app.js" defer type="module"></script>
 </body>
 </html>
