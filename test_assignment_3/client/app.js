@@ -1,3 +1,15 @@
+import {padZero, throttle, parseTimestamp} from './utils.js';
+import {
+    hideLoader,
+    showLoader,
+    showErrorMessage,
+    removeAllActiveDates,
+    renderTasks,
+    renderEmptyCell
+} from './dom.js';
+
+// Variables
+
 const API_URL = "http://localhost:4200/api";
 let sortType = 'asc';
 let todos = [];
@@ -10,24 +22,79 @@ const monthNames = ["January", "February", "March", "April", "May", "June", "Jul
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
-function createEmptyCell(datesContainer) {
-    const emptyCell = document.createElement('div');
-    emptyCell.classList.add('date');
-    datesContainer.appendChild(emptyCell);
+// Fetch
+
+function loadTasksFromName(name) {
+    showLoader();
+    const encodedName = encodeURIComponent(name);
+    fetch(`${API_URL}/todos/find?q=${encodedName}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.json();
+        })
+        .then(data => {
+            todos = [...data];
+            hideLoader();
+            updateTodoList();
+        })
+        .catch((err) => {
+            console.error(err);
+            hideLoader();
+            showErrorMessage();
+        });
 }
 
-function padZero(num) {
-    return num < 10 ? '0' + num : num;
+function loadTasks(from, to) {
+    showLoader();
+
+    fromDate = from;
+    toDate = to;
+
+    fetch(`${API_URL}/todos/date?from=${from}` + (to ? `&to=${to}` : '') + (onlyIncompleted ? '&status=false' : ''))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.json();
+        })
+        .then(data => {
+            todos = [...data];
+            allTasks = [...todos];
+            hideLoader();
+            updateTodoList();
+        })
+        .catch((err) => {
+            hideLoader();
+            console.error(err);
+            showErrorMessage();
+        })
 }
 
-function removeAllActiveDates() {
-    const dates = document.querySelectorAll('.date');
-    dates.forEach(date => {
-        if(date.dataset.task) {
-            date.removeAttribute('data-task');
-        }
-    });
+function loadAllTasks() {
+    showLoader();
+    return fetch(`${API_URL}/todos`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.json();
+        })
+        .then(data => {
+            todos = [...data];
+            allTasks = [...todos];
+            hideLoader();
+            updateTodoList();
+        })
+        .catch(err => {
+            console.error(err);
+            hideLoader();
+            showErrorMessage();
+        })
 }
+
+// Functions
 
 function renderSingleCellWithDate(datesContainer, idx) {
     const dateCell = document.createElement('div');
@@ -48,12 +115,6 @@ function renderSingleCellWithDate(datesContainer, idx) {
         loadTasks(startDate, endDate);
     };
     datesContainer.appendChild(dateCell);
-}
-
-function renderEmptyCell(datesContainer, firstDay) {
-    for (let i = 0; i < firstDay; i++) {
-        createEmptyCell(datesContainer);
-    }
 }
 
 function renderCellsWithDate(daysInMonth, datesContainer) {
@@ -90,40 +151,6 @@ function changeMonth(direction) {
 document.querySelector('#prev').addEventListener('click', () => changeMonth(-1));
 document.querySelector('#next').addEventListener('click', () => changeMonth(1));
 
-function loadTasks(from, to) {
-    fromDate = from;
-    toDate = to;
-
-    fetch(`${API_URL}/todos/date?from=${from}` + (to ? `&to=${to}` : '') + (onlyIncompleted ? '&status=false' : ''))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch');
-            }
-            return response.json();
-        })
-        .then(data => {
-            todos = [...data];
-            allTasks = [...todos];
-            updateTodoList();
-        })
-        .catch(console.error);
-}
-
-function loadAllTasks() {
-    return fetch(`${API_URL}/todos`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch');
-            }
-            return response.json();
-        })
-        .then(data => {
-            todos = [...data];
-            allTasks = [...todos];
-            updateTodoList();
-        });
-}
-
 function updateTodoList(tasks = todos) {
     const todosList = document.querySelector('.todos-list');
     todosList.innerHTML = '';
@@ -138,65 +165,6 @@ function updateTodoList(tasks = todos) {
         return;
     }
     renderTasks(tasks);
-}
-
-function renderMainTaskInfo(task) {
-    const taskInfo = document.createElement('div');
-    taskInfo.classList.add('todo-info');
-    const title = document.createElement('h3');
-    title.innerHTML = task.name;
-    const description = document.createElement('p');
-    description.innerHTML = task.shortdesc;
-    taskInfo.appendChild(title);
-    taskInfo.appendChild(description);
-
-    return taskInfo;
-}
-
-function renderTaskDetails(task) {
-    const taskDetails = document.createElement('div');
-    taskDetails.classList.add('todo-details');
-
-    const parsedDate = parseTimestamp(task.date);
-    const date = document.createElement('p');
-    date.innerHTML = parsedDate;
-
-    const icon = document.createElement('img');
-    icon.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
-    icon.alt = task.status ? 'Completed' : 'Not completed';
-    icon.setAttribute('data-aim', 'status');
-
-    taskDetails.appendChild(icon);
-    taskDetails.appendChild(date);
-
-    return taskDetails;
-}
-
-function renderTask(task) {
-    const taskContainer = document.createElement('div');
-    taskContainer.classList.add('todo-container');
-    const mainInfo = renderMainTaskInfo(task);
-    const details = renderTaskDetails(task);
-
-    taskContainer.appendChild(mainInfo);
-    taskContainer.appendChild(details);
-
-    taskContainer.setAttribute('data-id', task.id);
-
-    return taskContainer;
-}
-
-function renderTasks(tasks) {
-    const todosList = document.querySelector('.todos-list');
-    for(const task of tasks) {
-        const renderedTask = renderTask(task);
-        todosList.appendChild(renderedTask);
-    }
-}
-
-async function loadAndRenderAllTasks() {
-    await loadAllTasks();
-    updateTodoList();
 }
 
 function updateTodoItem(updatedTask) {
@@ -215,18 +183,6 @@ function toggleTaskStatus(taskId, newStatus) {
         task.status = newStatus;
         updateTodoItem(task);
     }
-}
-
-function parseTimestamp(timestamptz) {
-    const date = new Date(timestamptz);
-
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
 document.addEventListener('click', (e) => {
@@ -323,6 +279,17 @@ document.querySelector('#get-tasks-for-week').addEventListener('click', () => {
     loadTasks(startOfWeek, endOfWeek);
 });
 
+function handleInput() {
+    const inputValue = document.querySelector('#search').value.trim();
+    if(inputValue.length <= 0) {
+        loadAllTasks();
+        return;
+    }
+
+    loadTasksFromName(inputValue);
+}
+
+document.querySelector('#search').addEventListener('input', throttle(handleInput, 700));
 
 loadAllTasks();
 loadCalendar();
