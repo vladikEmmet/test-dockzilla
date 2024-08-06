@@ -117,4 +117,19 @@ export class TodoService {
       client.release();
     }
   }
+
+  async findByName(name: string) {
+    const client = await this.databaseService.getClient();
+    try {
+      const query = `
+        SELECT * FROM Task_entity
+        WHERE name ILIKE $1
+      `;
+
+      const result = await client.query(query, [`%${name}%`]);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
 }

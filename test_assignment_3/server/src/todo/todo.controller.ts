@@ -29,4 +29,9 @@ export class TodoController {
   ) {
     return this.todoService.findByDate(from, to, status, +limit, +offset);
   }
+
+  @Get('/find')
+  findByName(@Query('q') name: string) {
+    return this.todoService.findByName(name);
+  }
 }
