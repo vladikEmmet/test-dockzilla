@@ -2,6 +2,8 @@
     margin-left: 350px;
     padding-top: 100px;
     padding-right: calc((100vw - 1300px) / 2);
+    background: var(--white);
+    min-height: 100vh;
 }
 
 .todos-container {
@@ -21,6 +23,14 @@
     display: flex;
     align-items: center;
     gap: 5px;
+}
+
+.sort .sort-icon {
+    transition: 0.1s all ease;
+}
+
+.sort-icon.rotate {
+    transform: rotate(180deg);
 }
 
 .todos-header .sort p:hover {
@@ -52,4 +62,10 @@
     align-items: flex-end;
     flex-direction: column;
     gap: 10px;
+}
+
+
+.no-tasks {
+    font-size: 1.5rem;
+    color: var(--gray-blue);
 }

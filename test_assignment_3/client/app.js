@@ -1,26 +1,10 @@
-const API_URL = "http://localhost:4200/api"; // Должно быть в .env, оставил для простоты установки
-let date;
-
-function createTodoProxy(todos, onUpdate) {
-    return new Proxy(todos, {
-        set(target, property, value) {
-            const result = Reflect.set(target, property, value);
-            if (property !== 'length') {
-                onUpdate();
-            }
-            return result;
-        },
-        deleteProperty(target, property) {
-            const result = Reflect.deleteProperty(target, property);
-            if (property !== 'length') {
-                onUpdate();
-            }
-            return result;
-        }
-    });
-}
-
-let todos = createTodoProxy([], updateTodoList);
+const API_URL = "http://localhost:4200/api";
+let sortType = 'asc';
+let todos = [];
+let allTasks = [];
+let onlyIncompleted = false;
+let fromDate, toDate;
+const filterCheckbox = document.querySelector('#filter-checkbox');
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 let currentMonth = new Date().getMonth();
@@ -32,13 +16,36 @@ function createEmptyCell(datesContainer) {
     datesContainer.appendChild(emptyCell);
 }
 
+function padZero(num) {
+    return num < 10 ? '0' + num : num;
+}
+
+function removeAllActiveDates() {
+    const dates = document.querySelectorAll('.date');
+    dates.forEach(date => {
+        if(date.dataset.task) {
+            date.removeAttribute('data-task');
+        }
+    });
+}
+
 function renderSingleCellWithDate(datesContainer, idx) {
     const dateCell = document.createElement('div');
     dateCell.classList.add('date');
-    dateCell.dataset.date = `${currentYear}-${currentMonth + 1}-${idx}`;
+    dateCell.dataset.date = `${currentYear}-${padZero(currentMonth + 1)}-${padZero(idx)}`;
     dateCell.innerHTML = idx;
     dateCell.onclick = function() {
-        loadTasks(this.dataset.date);
+        const startDate = new Date(`${this.dataset.date}T00:00:00`).getTime();
+        const endDate = new Date(`${this.dataset.date}T23:59:59`).getTime();
+        if(fromDate === startDate && endDate === toDate && this.dataset.task) {
+            this.removeAttribute('data-task');
+            loadAllTasks();
+            return;
+        }
+
+        removeAllActiveDates();
+        this.setAttribute('data-task', true);
+        loadTasks(startDate, endDate);
     };
     datesContainer.appendChild(dateCell);
 }
@@ -83,9 +90,23 @@ function changeMonth(direction) {
 document.querySelector('#prev').addEventListener('click', () => changeMonth(-1));
 document.querySelector('#next').addEventListener('click', () => changeMonth(1));
 
-function loadTasks(date) {
-    const filteredTasks = todos.filter(task => task.date === date);
-    updateTodoList(filteredTasks);
+function loadTasks(from, to) {
+    fromDate = from;
+    toDate = to;
+
+    fetch(`${API_URL}/todos/date?from=${from}` + (to ? `&to=${to}` : '') + (onlyIncompleted ? '&status=false' : ''))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.json();
+        })
+        .then(data => {
+            todos = [...data];
+            allTasks = [...todos];
+            updateTodoList();
+        })
+        .catch(console.error);
 }
 
 function loadAllTasks() {
@@ -97,13 +118,25 @@ function loadAllTasks() {
             return response.json();
         })
         .then(data => {
-            todos.splice(0, todos.length, ...data);
+            todos = [...data];
+            allTasks = [...todos];
+            updateTodoList();
         });
 }
 
 function updateTodoList(tasks = todos) {
     const todosList = document.querySelector('.todos-list');
     todosList.innerHTML = '';
+    if(tasks.length <= 0) {
+        const noTasksContainer = document.createElement('div');
+        const noTasks = document.createElement('strong');
+        noTasksContainer.classList.add('no-tasks-container');
+        noTasks.classList.add('no-tasks');
+        noTasks.textContent = 'Ничего нет или всё сделано — в любом случае, вы молодец!';
+        noTasksContainer.appendChild(noTasks);
+        todosList.appendChild(noTasksContainer);
+        return;
+    }
     renderTasks(tasks);
 }
 
@@ -169,6 +202,7 @@ async function loadAndRenderAllTasks() {
 function updateTodoItem(updatedTask) {
     const todosList = document.querySelector('.todos-list');
     const taskElement = todosList.querySelector(`[data-id="${updatedTask.id}"]`);
+    todos.find(t => t.id === updatedTask.id).status = updatedTask.status;
     if (taskElement) {
         const img = taskElement.querySelector('img');
         img.src = updatedTask.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
@@ -183,7 +217,6 @@ function toggleTaskStatus(taskId, newStatus) {
     }
 }
 
-
 function parseTimestamp(timestamptz) {
     const date = new Date(timestamptz);
 
@@ -197,42 +230,99 @@ function parseTimestamp(timestamptz) {
 }
 
 document.addEventListener('click', (e) => {
-   const target = e.target;
-   if(target.dataset.aim === 'status') {
-       const taskId = target.closest('.todo-container').dataset.id;
-       const newStatus = target.src.includes('not-checked');
-       toggleTaskStatus(taskId, newStatus);
+    const target = e.target;
+    if(target.dataset.aim === 'status') {
+        const taskId = target.closest('.todo-container').dataset.id;
+        const newStatus = target.src.includes('not-checked');
+        toggleTaskStatus(taskId, newStatus);
 
-       return;
-   }
+        return;
+    }
 
-   if(target?.dataset.id || target?.closest?.dataset?.id) {
-       const modal = document.querySelector('#todo-dialog');
-       const task = todos.find(t => t.id === (target.dataset.id || target.closest.dataset.id));
-       modal.querySelector('.dialog-title').textContent = task.name;
-       modal.querySelector('.dialog-date').textContent = parseTimestamp(task.date);
-       modal.querySelector('.dialog-description').textContent = task.fulldesc;
+    if(target?.dataset.id || target?.closest?.dataset?.id) {
+        const modal = document.querySelector('#todo-dialog');
+        const task = todos.find(t => t.id === (target.dataset.id || target.closest.dataset.id));
+        modal.querySelector('.dialog-title').textContent = task.name;
+        modal.querySelector('.dialog-date').textContent = parseTimestamp(task.date);
+        modal.querySelector('.dialog-description').textContent = task.fulldesc;
 
-       const img = document.createElement('img');
-       img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
-       img.alt = task.status ? 'Completed' : 'Not completed';
+        const img = document.createElement('img');
+        img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
+        img.alt = task.status ? 'Completed' : 'Not completed';
 
-       img.addEventListener('click', () => {
-          toggleTaskStatus(task.id, !task.status);
-          img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
-       })
+        img.addEventListener('click', () => {
+            toggleTaskStatus(task.id, !task.status);
+            img.src = task.status ? 'assets/icons/checked.png' : "assets/icons/not-checked.png";
+        });
 
-       modal.querySelector('.dialog-img').innerHTML = '';
-       modal.querySelector('.dialog-img').appendChild(img);
+        modal.querySelector('.dialog-img').innerHTML = '';
+        modal.querySelector('.dialog-img').appendChild(img);
 
-       modal.showModal();
-   }
+        modal.showModal();
+    }
 
-   if(target?.dataset?.aim === 'close-modal') {
-         const modal = document.querySelector('#todo-dialog');
-         modal.close();
-   }
+    if(target?.dataset?.aim === 'close-modal') {
+        const modal = document.querySelector('#todo-dialog');
+        modal.close();
+    }
+
+    if(target?.dataset?.aim === "sort") {
+        if(sortType === 'asc') {
+            sortType = 'desc';
+            const sortedTasks = todos.sort((a, b) => a.date.localeCompare(b.date));
+            updateTodoList(sortedTasks);
+        } else {
+            sortType = 'asc';
+            const sortedTasks = todos.sort((a, b) => b.date.localeCompare(a.date));
+            updateTodoList(sortedTasks);
+        }
+        document.querySelector('.sort-icon').classList.toggle('rotate');
+    }
 });
+
+filterCheckbox.querySelector('input').addEventListener('change', function () {
+    onlyIncompleted = this.checked;
+
+    if(!this.checked && fromDate && toDate) {
+        loadTasks(fromDate, toDate);
+        return;
+    }
+
+    if(this.checked) {
+        todos = allTasks.filter(t => !t.status);
+    } else {
+        todos = [...allTasks];
+    }
+
+    updateTodoList();
+});
+
+document.querySelector('#get-today-tasks').addEventListener('click', () => {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0).getTime();
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
+
+    if(startOfDay === fromDate && endOfDay === toDate) {
+        return;
+    }
+
+    loadTasks(startOfDay, endOfDay);
+});
+
+document.querySelector('#get-tasks-for-week').addEventListener('click', () => {
+    const today = new Date();
+    const currentDayOfWeek = today.getDay();
+    const startDayOffset = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+    const startOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - startDayOffset, 0, 0, 0, 0).getTime();
+    const endOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (6 - startDayOffset), 23, 59, 59, 999).getTime();
+
+    if(startOfWeek === fromDate && endOfWeek === toDate) {
+        return;
+    }
+
+    loadTasks(startOfWeek, endOfWeek);
+});
+
 
 loadAllTasks();
 loadCalendar();

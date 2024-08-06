@@ -1,0 +1,13 @@
+:root {
+    --white: #fff;
+    --balck: #000;
+    --gray-border: #ccc;
+    --main-bg: #10172a;
+    --white-border: #eee;
+    --red: #f43f5e;
+    --gray-blue: #94a3b8;
+    --blue: #06b6d4;
+    --light-gray-hover: rgb(30 41 59);
+    --black-shadow: rgba(34, 60, 80, 0.2);
+    --black-semitransparent: rgba(0, 0, 0, 0.5);
+}
