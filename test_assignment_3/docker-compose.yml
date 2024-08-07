@@ -21,6 +21,12 @@ services:
       - "4200:4200"
     depends_on:
       - db
+    environment:
+      DB_USER: vladislavobedkov
+      DB_HOST: db
+      DB_NAME: test3
+      DB_PASSWORD: yourpassword
+      DB_PORT: 5432
 
   client:
     build:
