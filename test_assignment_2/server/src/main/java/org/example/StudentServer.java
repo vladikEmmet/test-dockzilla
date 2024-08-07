@@ -14,7 +14,6 @@ public class StudentServer {
 
         server.setHandler(context);
 
-        // Используем конструктор с классом сервлета
         ServletHolder servletHolder = new ServletHolder(StudentServlet.class);
         context.addServlet(servletHolder, "/students/*");
 

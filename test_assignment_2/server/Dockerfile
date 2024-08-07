@@ -1,33 +1,27 @@
-# Используйте образ Maven с JDK 21 для сборки проекта
-FROM eclipse-temurin:21-jdk-alpine AS build
+# Этап сборки
+FROM maven:3.9.8-amazoncorretto-21-al2023 as builder
 
 # Установите рабочую директорию
 WORKDIR /app
 
-# Установите Maven
-RUN apk add --no-cache maven
-
-# Копируйте pom.xml и загружайте зависимости
+# Скопируйте Maven конфигурации и исходный код
 COPY pom.xml .
-RUN mvn dependency:go-offline
-
-# Копируйте исходный код
 COPY src /app/src
 
-# Сборка приложения
-RUN mvn package -DskipTests
+# Соберите проект
+RUN mvn clean package
 
-# Используйте образ Eclipse Temurin для выполнения приложения
-FROM eclipse-temurin:21-jdk-alpine
+# Этап исполнения
+FROM maven:3.9.8-amazoncorretto-21-al2023
 
 # Установите рабочую директорию
 WORKDIR /app
 
-# Найдите файл JAR в каталоге target и скопируйте его
-COPY --from=build /app/target/*.jar app.jar
+# Скопируйте JAR-файл из предыдущего этапа
+COPY --from=builder /app/target/final-1.0-SNAPSHOT.jar /app/app.jar
+
+# Откройте порт, на котором работает приложение
+EXPOSE 8080
 
 # Запустите приложение
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
-# Expose порт приложения
-EXPOSE 8080
+CMD ["java", "-jar", "/app/app.jar"]

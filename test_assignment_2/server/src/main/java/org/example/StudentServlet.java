@@ -12,9 +12,9 @@ import java.time.LocalDate;
 
 public class StudentServlet extends HttpServlet {
 
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/test";
-    private static final String USER = "vladislavobedkov";
-    private static final String PASS = "";
+    private static final String DB_URL = System.getenv("DB_URL");
+    private static final String USER = System.getenv("DB_USER");
+    private static final String PASS = System.getenv("DB_PASSWORD");
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {

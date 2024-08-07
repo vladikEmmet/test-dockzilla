@@ -27,7 +27,6 @@ services:
       DB_NAME: test3
       DB_PASSWORD: yourpassword
       DB_PORT: 5432
-
   client:
     build:
       context: ./client
